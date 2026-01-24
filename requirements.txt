@@ -3,3 +3,5 @@ pandas
 google-cloud-bigquery
 prefect
 dbt-bigquery
+praw
+
