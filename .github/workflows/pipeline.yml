@@ -1,12 +1,13 @@
-name: Reddit Topic Warehouse Pipeline (dbt only)
+name: Reddit Topic Warehouse Pipeline
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "15 8 * * *"  # 08:15 Amsterdam time-ish (cron is UTC on GitHub)
+    # runs daily at 08:00 UTC (09:00 in Netherlands during winter, 10:00 during summer)
+    - cron: "0 8 * * *"
 
 jobs:
-  dbt-build:
+  run-dbt:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,23 +21,31 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install dbt-core dbt-bigquery
 
+      # Auth to Google Cloud using your service account JSON stored in GitHub Secrets
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: "${{ secrets.GCP_SA_KEY }}"
 
-      - name: Run dbt deps
+      # Optional but recommended: installs gcloud + sets project context
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: virtual-flux-455815-k4
+
+      - name: dbt deps
         working-directory: dbt/models/reddit_topic_warehouse
         run: dbt deps
 
-      - name: Run dbt (staging + silver + gold)
+      - name: dbt run (staging + silver + gold)
         working-directory: dbt/models/reddit_topic_warehouse
-        run: dbt run --select staging silver gold
+        run: |
+          dbt run --select staging silver gold
 
-      - name: Test dbt (staging + silver + gold)
+      - name: dbt test (staging + silver + gold)
         working-directory: dbt/models/reddit_topic_warehouse
-        run: dbt test --select staging silver gold
+        run: |
+          dbt test --select staging silver gold
