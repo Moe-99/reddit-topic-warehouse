@@ -4,4 +4,8 @@ google-cloud-bigquery
 prefect
 dbt-bigquery
 praw
+dbt-core==1.11.2
+dbt-bigquery==1.11.0
+
+
 
