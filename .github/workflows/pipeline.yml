@@ -28,7 +28,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: dbt deps
-        working-directory: dbt/models/reddit_topic_warehouse
+        working-directory: dbt/reddit_topic_warehouse
         run: dbt deps
 
       - name: dbt run (staging + silver + gold)
