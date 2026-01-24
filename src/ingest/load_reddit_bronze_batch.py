@@ -10,13 +10,29 @@ TABLE_ID = "reddit_posts_raw"
 
 HEADERS = {"User-Agent": "reddit-topic-warehouse/0.1 (learning project)"}
 
-def fetch_new_posts(subreddit: str, limit: int = 5) -> list[dict]:
+def fetch_new_posts(subreddit: str, limit: int = 5):
     url = f"https://www.reddit.com/r/{subreddit}/new.json"
-    params = {"limit": limit}
-    resp = requests.get(url, headers=HEADERS, params=params, timeout=30)
+    headers = {
+        # Reddit really cares about this. Make it specific.
+        "User-Agent": "reddit-topic-warehouse/1.0 (by u/your_username; contact: your_email)"
+    }
+    params = {"limit": limit, "raw_json": 1}
+
+    # small retry for transient blocks/rate limits
+    for attempt in range(3):
+        resp = requests.get(url, headers=headers, params=params, timeout=20)
+
+        # Sometimes 429/403 clears on retry; 403 may not, but try.
+        if resp.status_code in (403, 429):
+            time.sleep(2 * (attempt + 1))
+            continue
+
+        resp.raise_for_status()
+        data = resp.json()
+        return data["data"]["children"]
+
+    # If we got here, it's consistently blocked
     resp.raise_for_status()
-    data = resp.json()
-    return [item["data"] for item in data["data"]["children"]]
 
 def to_bronze_record(post: dict, subreddit: str) -> dict:
     created_utc = post.get("created_utc")
