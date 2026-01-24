@@ -1,0 +1,2 @@
+import{r}from"./vendor-tanstack-BK8oseNA.js";const a=(c,n,t=!1)=>{const u=r.useRef(null),s=r.useRef(c),e=r.useRef(!0);return s.current=c,r.useCallback((...f)=>{const o=()=>{s.current(...f),e.current=!0};u.current&&clearTimeout(u.current),t&&e.current?(o(),e.current=!1):u.current=setTimeout(()=>{t||o(),e.current=!0},n)},[n,t])};export{a as u};
+//# sourceMappingURL=use-debounce-callback-ClAx-Wwx.js.map

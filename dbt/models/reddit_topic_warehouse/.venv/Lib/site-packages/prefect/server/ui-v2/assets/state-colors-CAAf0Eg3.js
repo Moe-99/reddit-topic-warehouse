@@ -1,0 +1,2 @@
+const t={COMPLETED:"#219D4B",FAILED:"#DE0529",RUNNING:"#09439B",CANCELLED:"#333333",CANCELLING:"#334863",CRASHED:"#EA580C",PAUSED:"#726576",PENDING:"#8E8093",SCHEDULED:"#E08504"};function C(e,o=600){if(typeof document>"u")return t[e];const E=`--state-${e.toLowerCase()}-${o}`;return getComputedStyle(document.documentElement).getPropertyValue(E).trim()||t[e]}export{t as S,C as g};
+//# sourceMappingURL=state-colors-CAAf0Eg3.js.map
