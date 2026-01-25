@@ -17,6 +17,15 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Debug repo structure
+        run: |
+          pwd
+          ls -la
+          echo "---- dbt folder ----"
+          ls -la dbt || true
+          echo "---- find dbt_project.yml ----"
+          find . -maxdepth 6 -name dbt_project.yml -print
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
