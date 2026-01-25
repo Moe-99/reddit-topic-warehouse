@@ -2,6 +2,11 @@ name: Reddit Topic Warehouse Pipeline
 
 on:
   workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Run id from local ingestion/prefect"
+        required: false
+        default: ""
   schedule:
     - cron: "0 8 * * *"
 
