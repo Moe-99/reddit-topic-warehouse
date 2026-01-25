@@ -7,5 +7,5 @@ reddit_topic_warehouse:
       project: virtual-flux-455815-k4
       dataset: dbt_euw4
       threads: 2
-      keyfile: keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
       location: europe-west4
