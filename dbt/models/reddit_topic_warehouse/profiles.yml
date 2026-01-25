@@ -1,11 +1,11 @@
 reddit_topic_warehouse:
+  target: dev
   outputs:
     dev:
       type: bigquery
       method: service-account
       project: virtual-flux-455815-k4
       dataset: dbt_euw4
-      location: europe-west4
       threads: 2
-      keyfile_json: "{{ env_var('GCP_SA_KEY') }}"
-  target: dev
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
+      location: europe-west4
