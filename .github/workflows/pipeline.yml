@@ -10,7 +10,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DBT_PROFILES_DIR: dbt/models/reddit_topic_warehouse/
+      # profiles.yml is in the same folder as dbt_project.yml
+      DBT_PROFILES_DIR: dbt/models/reddit_topic_warehouse
       GCP_SA_KEY: "${{ secrets.GCP_SA_KEY }}"
 
     steps:
@@ -21,14 +22,16 @@ jobs:
         run: |
           pwd
           ls -la
-          echo "---- dbt folder ----"
+          echo "---- dbt ----"
           ls -la dbt || true
           echo "---- dbt/models ----"
           ls -la dbt/models || true
+          echo "---- dbt/models/reddit_topic_warehouse ----"
+          ls -la dbt/models/reddit_topic_warehouse || true
           echo "---- find dbt_project.yml ----"
           find . -maxdepth 6 -name dbt_project.yml -print
-          echo "---- find dbt_project.yml ----"
-          find . -maxdepth 6 -name dbt_project.yml -print
+          echo "---- find profiles.yml ----"
+          find . -maxdepth 6 -name profiles.yml -print
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -41,13 +44,13 @@ jobs:
           pip install -r requirements.txt
 
       - name: dbt deps
-        working-directory: dbt/models/reddit_topic_warehouse/
+        working-directory: dbt/models/reddit_topic_warehouse
         run: dbt deps
 
       - name: dbt run (staging + silver + gold)
-        working-directory: dbt/models/reddit_topic_warehouse/
+        working-directory: dbt/models/reddit_topic_warehouse
         run: dbt run --select staging silver gold
 
       - name: dbt test (staging + silver + gold)
-        working-directory: dbt/models/reddit_topic_warehouse/
+        working-directory: dbt/models/reddit_topic_warehouse
         run: dbt test --select staging silver gold
