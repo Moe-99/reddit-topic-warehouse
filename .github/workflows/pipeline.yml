@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DBT_PROFILES_DIR: dbt/reddit_topic_warehouse/.dbt
+      DBT_PROFILES_DIR: dbt/reddit_topic_warehouse
       GCP_SA_KEY: "${{ secrets.GCP_SA_KEY }}"
 
     steps:
