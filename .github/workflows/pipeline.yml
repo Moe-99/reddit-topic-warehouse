@@ -41,7 +41,9 @@ jobs:
       - name: Write GCP key file
         run: |
           mkdir -p /home/runner/.gcp
-          echo "${{ secrets.GCP_SA_KEY_B64 }}" | base64 -d > /home/runner/.gcp/key.json
+          cat << 'EOF' > /home/runner/.gcp/key.json
+          ${{ secrets.GCP_SA_KEY_JSON }}
+          EOF
 
       - name: Validate key.json
         run: |
