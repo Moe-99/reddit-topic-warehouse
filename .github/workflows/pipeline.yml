@@ -38,13 +38,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Create GCP service account key file
+      - name: Write GCP key file
         run: |
           mkdir -p /home/runner/.gcp
-          printf '%s' "${{ secrets.GCP_SA_KEY }}" > /home/runner/.gcp/key.json
+          echo "${{ secrets.GCP_SA_KEY_B64 }}" | base64 -d > /home/runner/.gcp/key.json
 
+      - name: Validate key.json
+        run: |
+          python -m json.tool /home/runner/.gcp/key.json > /dev/null
+          echo "✅ key.json is valid JSON"
 
-      # dbt_project.yml + profiles.yml live here
+     # dbt_project.yml + profiles.yml live here
       - name: dbt deps
         working-directory: dbt/models/reddit_topic_warehouse
         env:
