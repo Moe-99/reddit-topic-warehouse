@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DBT_PROFILES_DIR: dbt/reddit_topic_warehouse
+      DBT_PROFILES_DIR: .dbt
       GCP_SA_KEY: "${{ secrets.GCP_SA_KEY }}"
 
     steps:
@@ -23,6 +23,10 @@ jobs:
           ls -la
           echo "---- dbt folder ----"
           ls -la dbt || true
+          echo "---- dbt/models ----"
+          ls -la dbt/models || true
+          echo "---- find dbt_project.yml ----"
+          find . -maxdepth 6 -name dbt_project.yml -print
           echo "---- find dbt_project.yml ----"
           find . -maxdepth 6 -name dbt_project.yml -print
 
@@ -37,13 +41,13 @@ jobs:
           pip install -r requirements.txt
 
       - name: dbt deps
-        working-directory: dbt/reddit_topic_warehouse
+        working-directory: dbt/models/reddit_topic_warehouse
         run: dbt deps
 
       - name: dbt run (staging + silver + gold)
-        working-directory: dbt/reddit_topic_warehouse
+        working-directory: dbt/models/reddit_topic_warehouse
         run: dbt run --select staging silver gold
 
       - name: dbt test (staging + silver + gold)
-        working-directory: dbt/reddit_topic_warehouse
+        working-directory: dbt/models/reddit_topic_warehouse
         run: dbt test --select staging silver gold
