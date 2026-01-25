@@ -38,24 +38,30 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Create GCP service account key file
+        run: |
+          mkdir -p /home/runner/.gcp
+          printf '%s' "${{ secrets.GCP_SA_KEY }}" > /home/runner/.gcp/key.json
+
+
       # dbt_project.yml + profiles.yml live here
       - name: dbt deps
         working-directory: dbt/models/reddit_topic_warehouse
         env:
           DBT_PROFILES_DIR: .
-          GCP_SA_KEY: "${{ secrets.GCP_SA_KEY }}"
+          GOOGLE_APPLICATION_CREDENTIALS: /home/runner/.gcp/key.json
         run: dbt deps
 
       - name: dbt run (staging + silver + gold)
         working-directory: dbt/models/reddit_topic_warehouse
         env:
           DBT_PROFILES_DIR: .
-          GCP_SA_KEY: "${{ secrets.GCP_SA_KEY }}"
+          GOOGLE_APPLICATION_CREDENTIALS: /home/runner/.gcp/key.json
         run: dbt run --select staging silver gold
 
       - name: dbt test (staging + silver + gold)
         working-directory: dbt/models/reddit_topic_warehouse
         env:
           DBT_PROFILES_DIR: .
-          GCP_SA_KEY: "${{ secrets.GCP_SA_KEY }}"
+          GOOGLE_APPLICATION_CREDENTIALS: /home/runner/.gcp/key.json
         run: dbt test --select staging silver gold
