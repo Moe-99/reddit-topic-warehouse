@@ -9,11 +9,6 @@ jobs:
   run-dbt:
     runs-on: ubuntu-latest
 
-    env:
-      # profiles.yml is in the same folder as dbt_project.yml
-      DBT_PROFILES_DIR: dbt/models/reddit_topic_warehouse
-      GCP_SA_KEY: "${{ secrets.GCP_SA_KEY }}"
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -43,20 +38,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-           - name: dbt deps
+      # dbt_project.yml + profiles.yml live here
+      - name: dbt deps
         working-directory: dbt/models/reddit_topic_warehouse
         env:
           DBT_PROFILES_DIR: .
+          GCP_SA_KEY: "${{ secrets.GCP_SA_KEY }}"
         run: dbt deps
 
       - name: dbt run (staging + silver + gold)
         working-directory: dbt/models/reddit_topic_warehouse
         env:
           DBT_PROFILES_DIR: .
+          GCP_SA_KEY: "${{ secrets.GCP_SA_KEY }}"
         run: dbt run --select staging silver gold
 
       - name: dbt test (staging + silver + gold)
         working-directory: dbt/models/reddit_topic_warehouse
         env:
           DBT_PROFILES_DIR: .
+          GCP_SA_KEY: "${{ secrets.GCP_SA_KEY }}"
         run: dbt test --select staging silver gold
