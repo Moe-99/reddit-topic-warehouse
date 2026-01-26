@@ -53,7 +53,7 @@ jobs:
       - name: Validate key.json
         run: |
           python -m json.tool /home/runner/.gcp/key.json > /dev/null
-          echo "✅ key.json is valid JSON"
+          echo "key.json is valid JSON"
 
       # dbt_project.yml + profiles.yml live here
       - name: dbt deps
