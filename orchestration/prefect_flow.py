@@ -141,7 +141,7 @@ def wait_for_github_workflow(info: dict, timeout_seconds: int = 60 * 30, poll_se
 
     run_api_url = found_run["url"]  # API URL for this specific run
     html_url = found_run.get("html_url", "")
-    logger.info(f"✅ Found GitHub run: {html_url}")
+    logger.info(f"Found GitHub run: {html_url}")
 
     # Step B: Poll until completed
     while time.time() - start < timeout_seconds:
@@ -156,9 +156,9 @@ def wait_for_github_workflow(info: dict, timeout_seconds: int = 60 * 30, poll_se
 
         if status == "completed":
             if conclusion == "success":
-                logger.info(f"✅ GitHub workflow succeeded: {html_url}")
+                logger.info(f"GitHub workflow succeeded: {html_url}")
                 return
-            raise RuntimeError(f"❌ GitHub workflow failed: conclusion={conclusion} | {html_url}")
+            raise RuntimeError(f"GitHub workflow failed: conclusion={conclusion} | {html_url}")
 
         time.sleep(poll_seconds)
 
