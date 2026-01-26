@@ -64,7 +64,7 @@ It is designed as a production-style ELT pipeline with clear separation of conce
 **Silver Layer**
 
 - reddit_posts_clean
-Cleaned and structured Reddit post data
+  - Cleaned and structured Reddit post data
 
 **Gold Layer**
 
@@ -180,5 +180,6 @@ This project demonstrates:
 ├── .github/
 │   └── workflows/
 └── README.md
+
 
 
