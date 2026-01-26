@@ -1,5 +1,4 @@
 name: Reddit Topic Warehouse Pipeline
-run-name: "rtw-dbt | ${{ inputs.run_id || 'manual' }}"
 on:
   workflow_dispatch:
     inputs:
@@ -9,6 +8,8 @@ on:
         default: ""
   schedule:
     - cron: "0 8 * * *"
+run-name: "rtw-dbt | run_id=${{ inputs.run_id || 'scheduled' }}"
+
 
 jobs:
   run-dbt:
