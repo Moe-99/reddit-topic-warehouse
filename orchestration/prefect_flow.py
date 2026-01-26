@@ -126,7 +126,7 @@ def find_github_run_by_run_id(run_id: str) -> dict:
     repo = os.environ["GITHUB_REPO"]
 
     # Look at recent runs triggered by workflow_dispatch (your Prefect dispatch)
-    url = f"https://api.github.com/repos/{owner}/{repo}/actions/runs?event=workflow_dispatch&per_page=20"
+    url = url = f"https://api.github.com/repos/{owner}/{repo}/actions/runs?event=workflow_dispatch&per_page=50"
     data = _github_request(url, token)
 
     runs = data.get("workflow_runs", [])
