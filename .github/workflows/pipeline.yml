@@ -1,10 +1,10 @@
 name: Reddit Topic Warehouse Pipeline
-
+run-name: "rtw-dbt | ${{ inputs.run_id || 'manual' }}"
 on:
   workflow_dispatch:
     inputs:
       run_id:
-        description: "Run id from local ingestion/prefect"
+        description: "Run id from Prefect"
         required: false
         default: ""
   schedule:
