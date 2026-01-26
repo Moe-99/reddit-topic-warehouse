@@ -101,8 +101,9 @@ def trigger_github_dbt_workflow(run_id: str = "") -> None:
 # =========================
 @task(retries=2, retry_delay_seconds=30)
 def bronze_ingestion() -> None:
-    python_exe = os.sys.executable
-    run_cmd([python_exe, str(INGEST_SCRIPT)], cwd=PROJECT_ROOT)
+    python_exe = PROJECT_ROOT / "dbt" / "models" / "reddit_topic_warehouse" / ".venv" / "Scripts" / "python.exe"
+    run_cmd([str(python_exe), str(INGEST_SCRIPT)], cwd=PROJECT_ROOT)
+
 
 
 @task
