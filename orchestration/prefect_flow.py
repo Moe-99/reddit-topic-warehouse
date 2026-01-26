@@ -130,14 +130,15 @@ def check_bronze_freshness() -> None:
     query = """
     SELECT COUNT(*) as cnt
     FROM `virtual-flux-455815-k4.bronze_layer.reddit_posts_raw`
-    WHERE DATE(ingested_ts) = CURRENT_DATE()
+    WHERE ingested_ts >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 26 HOUR)
     """
     result = list(client.query(query))[0]["cnt"]
 
     if result == 0:
-        raise ValueError("No new rows ingested into bronze today!")
+        raise ValueError("No new rows ingested into bronze in the last 26 hours!")
     else:
         get_run_logger().info(f"Bronze freshness check passed: {result} rows")
+
 
 
 @flow(name="reddit-topic-warehouse-pipeline")
