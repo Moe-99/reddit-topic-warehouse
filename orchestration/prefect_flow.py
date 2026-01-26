@@ -100,6 +100,85 @@ def trigger_github_dbt_workflow(run_id: str = "") -> None:
 
     logger.info(f"Triggered GitHub Actions workflow '{workflow_file}' on ref '{ref}' (run_id={run_id})")
 
+def _github_request(url: str, token: str) -> dict:
+    req = urllib.request.Request(
+        url,
+        method="GET",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "prefect-trigger",
+        },
+    )
+    with urllib.request.urlopen(req) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+@task(retries=2, retry_delay_seconds=10)
+def find_github_run_by_run_id(run_id: str) -> dict:
+    """
+    Find the workflow run object whose `name` includes our run_id.
+    Requires your workflow to set: run-name: "... run_id=XYZ"
+    """
+    token = os.environ["GITHUB_TOKEN"]
+    owner = os.environ["GITHUB_OWNER"]
+    repo = os.environ["GITHUB_REPO"]
+
+    # Look at recent runs triggered by workflow_dispatch (your Prefect dispatch)
+    url = f"https://api.github.com/repos/{owner}/{repo}/actions/runs?event=workflow_dispatch&per_page=20"
+    data = _github_request(url, token)
+
+    runs = data.get("workflow_runs", [])
+    for r in runs:
+        name = (r.get("name") or "")
+        if run_id in name:
+            return r
+
+    # If it hasn't shown up yet, fail so Prefect retries this task
+    raise RuntimeError(f"Could not find GitHub Actions run containing run_id={run_id} yet.")
+
+
+@task(retries=0)
+def wait_for_github_run_completion(run_id: str, timeout_seconds: int = 1800, poll_seconds: int = 15) -> None:
+    """
+    Poll GitHub until the run completes.
+    - Succeeds if conclusion == success
+    - Fails Prefect if conclusion != success (failure/cancelled/timed_out/etc)
+    """
+    logger = get_run_logger()
+
+    token = os.environ["GITHUB_TOKEN"]
+    owner = os.environ["GITHUB_OWNER"]
+    repo = os.environ["GITHUB_REPO"]
+
+    run = find_github_run_by_run_id(run_id)
+    run_api_url = run["url"]          # API URL for the run
+    run_html_url = run.get("html_url")  # Nice link for logs
+
+    start = datetime.now(timezone.utc)
+
+    while True:
+        current = _github_request(run_api_url, token)
+        status = current.get("status")        # queued | in_progress | completed
+        conclusion = current.get("conclusion")  # success | failure | cancelled | ...
+
+        logger.info(f"GitHub run status={status} conclusion={conclusion} | {run_html_url}")
+
+        if status == "completed":
+            if conclusion == "success":
+                logger.info(f"GitHub workflow completed successfully: {run_html_url}")
+                return
+            raise RuntimeError(f"GitHub workflow failed (conclusion={conclusion}): {run_html_url}")
+
+        elapsed = (datetime.now(timezone.utc) - start).total_seconds()
+        if elapsed > timeout_seconds:
+            raise TimeoutError(f"Timed out waiting for GitHub workflow: {run_html_url}")
+
+        import time
+        time.sleep(poll_seconds)
+
+
 
 # =========================
 # Existing tasks
