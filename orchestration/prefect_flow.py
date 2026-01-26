@@ -1,21 +1,27 @@
 from __future__ import annotations
 
 import os
+import json
 import subprocess
+import urllib.request
+import urllib.error
 from pathlib import Path
+from datetime import datetime, timezone
+from google.cloud import bigquery
+
+
 
 from prefect import flow, task, get_run_logger
 
-# ==== Paths (edit only if your repo differs) ====
+# ==== Paths ====
 PROJECT_ROOT = Path(r"C:\reddit-topic-warehouse")
 
-INGEST_SCRIPT = PROJECT_ROOT /  "src" / "ingest" / "load_reddit_bronze_batch.py"
+INGEST_SCRIPT = PROJECT_ROOT / "src" / "ingest" / "load_reddit_bronze_batch.py"
 DBT_PROJECT_DIR = PROJECT_ROOT / "dbt" / "models" / "reddit_topic_warehouse"
 # ===============================================
 
 
 def run_cmd(cmd: list[str], cwd: Path) -> None:
-    """Run a command, stream logs, fail loudly if it errors."""
     logger = get_run_logger()
     logger.info(f"Running: {' '.join(cmd)} (cwd={cwd})")
 
@@ -36,9 +42,65 @@ def run_cmd(cmd: list[str], cwd: Path) -> None:
         raise RuntimeError(f"Command failed ({completed.returncode}): {' '.join(cmd)}")
 
 
+# =========================
+# Option 3: Trigger GitHub Actions
+# =========================
+@task(retries=2, retry_delay_seconds=30)
+def trigger_github_dbt_workflow(run_id: str = "") -> None:
+    """
+    Triggers GitHub Actions workflow_dispatch for .github/workflows/pipeline.yml
+
+    Required env vars (set locally on your laptop):
+      - GITHUB_TOKEN
+      - GITHUB_OWNER
+      - GITHUB_REPO
+
+    Optional:
+      - GITHUB_WORKFLOW_FILE (default: pipeline.yml)
+      - GITHUB_REF (default: main)
+    """
+    logger = get_run_logger()
+
+    token = os.environ["GITHUB_TOKEN"]
+    owner = os.environ["GITHUB_OWNER"]
+    repo = os.environ["GITHUB_REPO"]
+    workflow_file = os.getenv("GITHUB_WORKFLOW_FILE", "pipeline.yml")
+    ref = os.getenv("GITHUB_REF", "main")
+
+    url = f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/{workflow_file}/dispatches"
+
+    payload = {"ref": ref, "inputs": {"run_id": run_id}}
+    data = json.dumps(payload).encode("utf-8")
+
+    req = urllib.request.Request(
+        url,
+        data=data,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "Content-Type": "application/json",
+            "User-Agent": "prefect-trigger",
+        },
+    )
+
+    try:
+        with urllib.request.urlopen(req) as resp:
+            if resp.status not in (201, 204):
+                raise RuntimeError(f"Unexpected status {resp.status}")
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="ignore")
+        raise RuntimeError(f"GitHub dispatch failed: {e.code} {e.reason} | {body}")
+
+    logger.info(f"✅ Triggered GitHub Actions workflow '{workflow_file}' on ref '{ref}' (run_id={run_id})")
+
+
+# =========================
+# Existing tasks
+# =========================
 @task(retries=2, retry_delay_seconds=30)
 def bronze_ingestion() -> None:
-    # Ensure we use the venv python (same interpreter Prefect uses)
     python_exe = os.sys.executable
     run_cmd([python_exe, str(INGEST_SCRIPT)], cwd=PROJECT_ROOT)
 
@@ -62,32 +124,37 @@ def dbt_run_gold() -> None:
 def dbt_test_gold() -> None:
     run_cmd(["dbt", "test", "--select", "gold"], cwd=DBT_PROJECT_DIR)
 
+@task
+def check_bronze_freshness() -> None:
+    client = bigquery.Client()
+    query = """
+    SELECT COUNT(*) as cnt
+    FROM `virtual-flux-455815-k4.bronze_layer.reddit_posts_raw`
+    WHERE DATE(ingested_ts) = CURRENT_DATE()
+    """
+    result = list(client.query(query))[0]["cnt"]
+
+    if result == 0:
+        raise ValueError("No new rows ingested into bronze today!")
+    else:
+        get_run_logger().info(f"Bronze freshness check passed: {result} rows")
+
 
 @flow(name="reddit-topic-warehouse-pipeline")
 def reddit_topic_warehouse_pipeline() -> None:
     """
-    End-to-end pipeline:
-      1) ingest -> bronze
-      2) build + test silver
-      3) build + test gold
+    Option 3 end-to-end pipeline:
+      1) Laptop: ingest -> bronze (Reddit access works locally)
+      2) Laptop: validate bronze freshness
+      3) GitHub Actions: dbt run/test -> staging/silver/gold (cloud runner)
     """
     bronze_ingestion()
-    dbt_run_silver()
-    dbt_test_silver()
-    dbt_run_gold()
-    dbt_test_gold()
+    check_bronze_freshness()
+
+    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    trigger_github_dbt_workflow(run_id=run_id)
+
 
 
 if __name__ == "__main__":
     reddit_topic_warehouse_pipeline()
-
-if __name__ == "__main__":
-    reddit_topic_warehouse_pipeline.serve(
-        name="rtw-daily",
-        cron="0 9 * * *",
-        tags=["reddit", "rtw", "bronze", "dbt", "bigquery", "daily"],
-        description="Daily Reddit Topic Warehouse pipeline: ingest -> dbt silver -> tests -> dbt gold -> tests",
-        version="1.0.0",
-    )
-
-
