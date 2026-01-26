@@ -232,10 +232,12 @@ def reddit_topic_warehouse_pipeline() -> None:
     check_bronze_freshness()
 
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
     trigger_github_dbt_workflow(run_id=run_id)
 
-    # NEW: make Prefect truly end-to-end
-    wait_for_github_run_completion(run_id=run_id, timeout_seconds=1800, poll_seconds=15)
+    gh_run_id = find_github_run_by_run_id(run_id=run_id)
+    wait_for_github_run_completion(gh_run_id=gh_run_id, poll_seconds=20, timeout_minutes=20)
+
 
 
 
