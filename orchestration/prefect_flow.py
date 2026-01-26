@@ -1,6 +1,6 @@
 from __future__ import annotations
+
 import os
-import 
 import json
 import subprocess
 import urllib.request
@@ -8,6 +8,9 @@ import urllib.error
 from pathlib import Path
 from datetime import datetime, timezone
 from google.cloud import bigquery
+
+
+
 from prefect import flow, task, get_run_logger
 
 # ==== Paths ====
@@ -43,10 +46,24 @@ def run_cmd(cmd: list[str], cwd: Path) -> None:
 # Option 3: Trigger GitHub Actions
 # =========================
 @task(retries=2, retry_delay_seconds=30)
-def trigger_github_dbt_workflow(run_id: str) -> dict:
+def trigger_github_dbt_workflow(run_id: str = "") -> None:
     """
-    Trigger GitHub Actions workflow_dispatch and return info needed for polling.
+    Triggers GitHub Actions workflow_dispatch for .github/workflows/pipeline.yml
+
+    Required env vars (set locally on your laptop):
+      - GITHUB_TOKEN
+      - GITHUB_OWNER
+      - GITHUB_REPO
+
+    Optional:
+      - GITHUB_WORKFLOW_FILE (default: pipeline.yml)
+      - GITHUB_REF (default: main)
     """
+
+    for k in ["GITHUB_TOKEN", "GITHUB_OWNER", "GITHUB_REPO"]:
+        if not os.getenv(k):
+            raise RuntimeError(f"Missing required env var: {k}")
+
     logger = get_run_logger()
 
     token = os.environ["GITHUB_TOKEN"]
@@ -55,12 +72,13 @@ def trigger_github_dbt_workflow(run_id: str) -> dict:
     workflow_file = os.getenv("GITHUB_WORKFLOW_FILE", "pipeline.yml")
     ref = os.getenv("GITHUB_REF", "main")
 
-    dispatch_url = f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/{workflow_file}/dispatches"
+    url = f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/{workflow_file}/dispatches"
+
     payload = {"ref": ref, "inputs": {"run_id": run_id}}
     data = json.dumps(payload).encode("utf-8")
 
     req = urllib.request.Request(
-        dispatch_url,
+        url,
         data=data,
         method="POST",
         headers={
@@ -80,90 +98,7 @@ def trigger_github_dbt_workflow(run_id: str) -> dict:
         body = e.read().decode("utf-8", errors="ignore")
         raise RuntimeError(f"GitHub dispatch failed: {e.code} {e.reason} | {body}")
 
-    logger.info(f"✅ Dispatched workflow '{workflow_file}' on ref '{ref}' (run_id={run_id})")
-
-    return {
-        "owner": owner,
-        "repo": repo,
-        "workflow_file": workflow_file,
-        "ref": ref,
-        "run_id": run_id,
-    }
-
-
-@task(retries=0)
-def wait_for_github_workflow(info: dict, timeout_seconds: int = 60 * 30, poll_seconds: int = 15) -> None:
-    """
-    Wait for the GitHub Actions run with display_title containing run_id to finish.
-    Fails Prefect if GitHub run fails.
-    """
-    logger = get_run_logger()
-
-    token = os.environ["GITHUB_TOKEN"]
-    owner = info["owner"]
-    repo = info["repo"]
-    workflow_file = info["workflow_file"]
-    run_id = info["run_id"]
-
-    list_runs_url = f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/{workflow_file}/runs?per_page=20"
-
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/vnd.github+json",
-        "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "prefect-poller",
-    }
-
-    start = time.time()
-    found_run = None
-
-    # Step A: Find the run that matches our run_id in the run title
-    while time.time() - start < timeout_seconds:
-        req = urllib.request.Request(list_runs_url, headers=headers, method="GET")
-        with urllib.request.urlopen(req) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-
-        runs = data.get("workflow_runs", [])
-        for r in runs:
-            display_title = (r.get("display_title") or "")
-            if run_id in display_title:
-                found_run = r
-                break
-
-        if found_run:
-            break
-
-        logger.info(f"Waiting for GitHub run to appear... (run_id={run_id})")
-        time.sleep(poll_seconds)
-
-    if not found_run:
-        raise RuntimeError(f"Timed out waiting for GitHub run to appear (run_id={run_id})")
-
-    run_api_url = found_run["url"]  # API URL for this specific run
-    html_url = found_run.get("html_url", "")
-    logger.info(f"Found GitHub run: {html_url}")
-
-    # Step B: Poll until completed
-    while time.time() - start < timeout_seconds:
-        req = urllib.request.Request(run_api_url, headers=headers, method="GET")
-        with urllib.request.urlopen(req) as resp:
-            run = json.loads(resp.read().decode("utf-8"))
-
-        status = run.get("status")          # queued / in_progress / completed
-        conclusion = run.get("conclusion")  # success / failure / cancelled / etc.
-
-        logger.info(f"GitHub run status={status}, conclusion={conclusion}")
-
-        if status == "completed":
-            if conclusion == "success":
-                logger.info(f"GitHub workflow succeeded: {html_url}")
-                return
-            raise RuntimeError(f"GitHub workflow failed: conclusion={conclusion} | {html_url}")
-
-        time.sleep(poll_seconds)
-
-    raise RuntimeError(f"Timed out waiting for GitHub run to complete (run_id={run_id})")
-
+    logger.info(f"Triggered GitHub Actions workflow '{workflow_file}' on ref '{ref}' (run_id={run_id})")
 
 
 # =========================
@@ -224,8 +159,7 @@ def reddit_topic_warehouse_pipeline() -> None:
     check_bronze_freshness()
 
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    info = trigger_github_dbt_workflow(run_id=run_id)
-    wait_for_github_workflow(info, timeout_seconds=60 * 30, poll_seconds=15)
+    trigger_github_dbt_workflow(run_id=run_id)
 
 
 
