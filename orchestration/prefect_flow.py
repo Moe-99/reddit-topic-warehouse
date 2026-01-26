@@ -228,17 +228,15 @@ def check_bronze_freshness() -> None:
 
 @flow(name="reddit-topic-warehouse-pipeline")
 def reddit_topic_warehouse_pipeline() -> None:
-    """
-    Option 3 end-to-end pipeline:
-      1) Laptop: ingest -> bronze (Reddit access works locally)
-      2) Laptop: validate bronze freshness
-      3) GitHub Actions: dbt run/test -> staging/silver/gold (cloud runner)
-    """
     bronze_ingestion()
     check_bronze_freshness()
 
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     trigger_github_dbt_workflow(run_id=run_id)
+
+    # NEW: make Prefect truly end-to-end
+    wait_for_github_run_completion(run_id=run_id, timeout_seconds=1800, poll_seconds=15)
+
 
 
 
