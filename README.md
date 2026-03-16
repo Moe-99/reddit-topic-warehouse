@@ -1,7 +1,7 @@
 # Reddit Topic Warehouse
 ## Overview
 
-This project implements an automated data pipeline that ingests Reddit posts into BigQuery, transforms them using dbt, and orchestrates execution with Prefect and GitHub Actions.
+Reddit generates millions of posts daily. This project builds a production-style ELT pipeline that captures, transforms, and models that data into analytics-ready tables, tracking subreddit activity trends over time. This project implements an automated data pipeline that ingests Reddit posts into BigQuery, transforms them using dbt, and orchestrates execution with Prefect and GitHub Actions.
 
 The pipeline supports:
 
