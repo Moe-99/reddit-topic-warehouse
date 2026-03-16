@@ -121,8 +121,7 @@ The pipeline runs daily using a hybrid scheduling approach:
 - GitHub Actions (scheduled + triggered)
   - Executes dbt transformations in a cloud runner
 
-This setup reflects real-world constraints where data access is local but transformations run in cloud infrastructure.
-
+Note: Local scheduling via Windows Task Scheduler reflects a real-world constraint where Reddit API access required a local environment. A containerized solution is planned as a future improvement
 ## Data Quality
 
 Implemented checks include:
