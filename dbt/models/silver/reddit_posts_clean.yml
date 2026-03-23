@@ -13,6 +13,6 @@ models:
         tests:
           - not_null
 
-      - name: ingested_ts
+      - name: ingested_at
         tests:
           - not_null

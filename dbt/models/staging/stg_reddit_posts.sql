@@ -1,28 +1,39 @@
 {{ config(materialized='view') }}
+WITH bronze AS (
+  SELECT
+    run_id, 
+    ingested_at,
+    source,
+    subreddit,
+    params,
+    raw_response
+    FROM {{source("bronze_layer", "reddit_posts_raw")}}
+),
+ posts AS (
+  SELECT 
+    run_id,
+    ingested_at,
+    source,
+    subreddit,
+    params,
+    child
+    FROM bronze,
+    UNNEST(JSON_QUERY_ARRAY(raw_response, '$.data.children')) AS child
+)
+
 SELECT
-    -- Core identifiers
-    CAST(post_id as string) as post_id,
-    LOWER(CAST(subreddit as string)) as subreddit,
-    
-    --Timestamps
-    CAST(created_ts as timestamp) as created_ts,
-    CAST(ingested_ts as timestamp) as ingested_ts,
-
-    --Text cleaning: trim + convert empty strings to NULL
-    NULLIF(TRIM(CAST(title as string)), '') as title,
-    NULLIF(TRIM(CAST(selftext as string)), '') as selftext,
-
-    -- Metrics: ensure integer type
-    CAST(score as integer) as score,
-    CAST(num_comments as integer) as num_comments,
-
-    -- Extract from JSON (row_json is STRING containing JSON)
-    json_value(raw_json, '$.author') as author,
-    concat('https://www.reddit.com', json_value(raw_json, '$.permalink')) as post_url
-
-    from {{ source('bronze_layer', 'reddit_posts_raw') }}
-
-
-
-
-
+  run_id,
+  ingested_at,
+  source,
+  LOWER(subreddit) AS subreddit,
+  JSON_VALUE(child, '$.data.id') AS post_id,
+  NULLIF(TRIM(JSON_VALUE(child, '$.data.title')), '') AS title,
+  NULLIF(TRIM(JSON_VALUE(child, '$.data.selftext')), '') AS selftext,
+  CAST(JSON_VALUE(child, '$.data.score') AS INT64) AS score,
+  CAST(JSON_VALUE(child, '$.data.num_comments') AS INT64) AS num_comments,
+  JSON_VALUE(child, '$.data.author') AS author,
+  JSON_VALUE(child, '$.data.permalink') AS permalink,
+  CONCAT('https://www.reddit.com', JSON_VALUE(child, '$.data.url')) AS post_url,
+  CAST(JSON_VALUE(child, '$.data.is_self') AS BOOL) AS is_self,
+  TIMESTAMP_SECONDS(CAST(JSON_VALUE(child, '$.data.created_utc') AS INT64)) AS created_ts
+  FROM posts
