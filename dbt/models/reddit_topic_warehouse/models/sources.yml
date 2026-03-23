@@ -1,8 +1,0 @@
-version: 2
-
-sources:
-  - name: bronze_layer
-    database: virtual-flux-455815-k4
-    schema: bronze_layer
-    tables:
-      - name: reddit_posts_raw

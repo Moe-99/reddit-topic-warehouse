@@ -1,2 +1,0 @@
-import{j as r}from"./vendor-tanstack-BK8oseNA.js";import{F as a,a as e,W as s}from"./work-queue-icon-text-_Ez8e2dw.js";const u=({deployment:o})=>r.jsxs("div",{className:"flex items-center gap-4",children:[r.jsx(a,{flowId:o.flow_id}),o.work_pool_name&&r.jsx(e,{workPoolName:o.work_pool_name}),o.work_pool_name&&o.work_queue_name&&r.jsx(s,{workPoolName:o.work_pool_name,workQueueName:o.work_queue_name,showLabel:!0,showStatus:!0})]});export{u as D};
-//# sourceMappingURL=deployment-links-D9ZR_vmp.js.map
