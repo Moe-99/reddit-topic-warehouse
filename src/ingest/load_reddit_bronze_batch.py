@@ -4,9 +4,12 @@ import time
 import uuid
 from datetime import datetime, timezone
 from google.cloud import bigquery
+import os 
+from dotenv import load_dotenv
 
-PROJECT_ID = "virtual-flux-455815-k4"
-DATASET_ID = "bronze_layer"
+
+PROJECT_ID = os.environ.get("PROJECT_ID")
+DATASET_ID = os.environ.get("DATASET_ID")
 TABLE_ID = "reddit_posts_raw"
 
 
