@@ -188,27 +188,6 @@ def bronze_ingestion() -> None:
     python_exe = PROJECT_ROOT / "dbt" / "models" / "reddit_topic_warehouse" / ".venv" / "Scripts" / "python.exe"
     run_cmd([str(python_exe), str(INGEST_SCRIPT)], cwd=PROJECT_ROOT)
 
-
-
-@task
-def dbt_run_silver() -> None:
-    run_cmd(["dbt", "run", "--select", "staging", "silver"], cwd=DBT_PROJECT_DIR)
-
-
-@task
-def dbt_test_silver() -> None:
-    run_cmd(["dbt", "test", "--select", "staging", "silver"], cwd=DBT_PROJECT_DIR)
-
-
-@task
-def dbt_run_gold() -> None:
-    run_cmd(["dbt", "run", "--select", "gold"], cwd=DBT_PROJECT_DIR)
-
-
-@task
-def dbt_test_gold() -> None:
-    run_cmd(["dbt", "test", "--select", "gold"], cwd=DBT_PROJECT_DIR)
-
 @task
 def check_bronze_freshness() -> None:
     client = bigquery.Client()
